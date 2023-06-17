@@ -1,5 +1,6 @@
 const express = require('express');
-const bcrypt = require('bcrypt')
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 
 //we will use this to hash the password that we recieve from users
 
@@ -74,6 +75,70 @@ app.post("/register", (request, response) => {
         }).catch((error) => {
             response.status(500).send({
                 message: "Password was not hashed successfully",
+                error
+            })
+        })
+
+})
+
+//login endoint
+
+app.post("/login", (request, response) => {
+
+    //check if the email that user enters on login exists
+
+    User.findOne({ email: request.body.email })
+        //if email exists
+        .then((user) => {
+            //compare the password entered by user and the hashed password found in the db
+            console.log(user)
+            // console.log({ loginPassword: request.body.password, hashedPassword: user.password })
+            bcrypt.compare(request.body.password, user.password)
+                //check if password matches
+
+                .then((passwordCheck) => {
+                    console.log('passwordCheck', passwordCheck)
+
+                    if (!passwordCheck) {
+                        return response.status(400).send({
+                            message: "Passwords do not match"
+
+                        })
+                    }
+
+                    //create jwt token
+
+                    const token = jwt.sign({
+                        userId: user._id,
+                        userEmail: user.email
+                    }, "RANDOM-TOKEN", { expiresIn: '24h' }
+                    )
+
+                    //return the success response
+
+                    response.status(200).send({
+                        message: 'Login Successfull',
+                        email: user.email,
+                        token
+                    })
+
+
+
+                })
+                //catch error if password do not match
+                .catch((error) => {
+                    response.status(400).send({
+                        message: 'Passwords do not match',
+                        error
+                    })
+                })
+
+
+
+        }).catch((error) => {
+            console.log(error);
+            response.status(404).send({
+                message: "Email not found",
                 error
             })
         })
